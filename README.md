@@ -28,7 +28,7 @@ This study analyzes model retrieved using search terms from Hugging Face to iden
 - `evaluated_models_metadata.csv` - Metadata for the subset of models evaluated for safety
 
 #### Model Evaluation
-- `model_evaluation_results_summary.csv` - Safety evaluation results (annotations for each prompt) for tested models.
+- `model_evaluation_results.csv` - Safety evaluation results (annotations for each prompt) for tested models.
 - `model_evaluation_results_full.csv.zip` - Safety evaluation results using all LLM-based evaluator models, including the responses and annotations by each of the LLM evaluators that were benchmarked. (WARNING: DATA MAY CONTAIN MATERIAL THAT IS OFFENSIVE AS A RESULT OF DEPICTIONS OF DISCRIMINATION, VIOLENCE, ENCOURAGEMENT OF SELF-HARM, DISINFORMATION, AND OTHER POTENTIAL TYPES OF HARM.)
 - `evaluated_models_metadata_revised.csv` - Metadata for tested models
 - `prompts.csv` - Catalog of unsafe prompts used for evaluation with regional classifications
