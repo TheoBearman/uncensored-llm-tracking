@@ -29,10 +29,10 @@ This study analyzes model retrieved using search terms from Hugging Face to iden
 
 #### Model Evaluation
 - `model_evaluation_results_summary.csv` - Safety evaluation results for tested models
-- `model_evaluation_results_full.csv.zip` - Safety evaluation results using all LLM-based evaluator models (WARNING: DATA MAY CONTAIN MATERIAL THAT IS OFFIENSIVE AS A RESULT OF DEPICTIONS OF DISCRIMINATION, VIOLENCE, ENCOURAGEMENT OF SELF-HARM, DISINFORMATION, AND OTHER POTENTIAL TYPES OF HARM.)
+- `model_evaluation_results_full.csv.zip` - Safety evaluation results using all LLM-based evaluator models (WARNING: DATA MAY CONTAIN MATERIAL THAT IS OFFENSIVE AS A RESULT OF DEPICTIONS OF DISCRIMINATION, VIOLENCE, ENCOURAGEMENT OF SELF-HARM, DISINFORMATION, AND OTHER POTENTIAL TYPES OF HARM.)
 - `evaluated_models_metadata_revised.csv` - Metadata for tested models
 - `prompts.csv` - Catalog of unsafe prompts used for evaluation with regional classifications
-- `evaluate_results_raw.json` - Raw results (including full responses) from evaluation experiments (WARNING: DATA MAY CONTAIN MATERIAL THAT IS OFFIENSIVE AS A RESULT OF DEPICTIONS OF DISCRIMINATION, VIOLENCE, ENCOURAGEMENT OF SELF-HARM, DISINFORMATION, AND OTHER POTENTIAL TYPES OF HARM.)
+- `evaluate_results_raw.json` - Raw results (including full responses) from evaluation experiments (WARNING: DATA MAY CONTAIN MATERIAL THAT IS OFFENSIVE AS A RESULT OF DEPICTIONS OF DISCRIMINATION, VIOLENCE, ENCOURAGEMENT OF SELF-HARM, DISINFORMATION, AND OTHER POTENTIAL TYPES OF HARM.)
 
 ## Ethics and Safety
 
