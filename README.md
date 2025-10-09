@@ -17,7 +17,6 @@ This study analyzes model retrieved using search terms from Hugging Face to iden
 - `process_scrape_results.ipynb` - Filter and process raw scrape data and generates normalized datasets with family attribution
 - `hf_model_benchmarker_.py` - Evaluates selected models using Hugging Face API
 - `hf_model_benchmarker_gguf.py` - Evaluates GGUF-format models using llama.cpp
-- `unsafe_prompt_evaluation.ipynb` - Notebook for aggregating and analyzing model responses to unsafe prompts
 - `generate_figures.ipynb` - Generates the paper figures and tables from the output of `process_scrape_results.ipynb` and benchmarking
 
 ### Generated Data Files
