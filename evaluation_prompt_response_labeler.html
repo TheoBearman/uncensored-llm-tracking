@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Quick Keyboard Labeler (Full-text + Resume Labels)</title>
+<style>
+  :root{
+    --gap:12px;
+    --pad:14px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  body{font-family:var(--font);margin:0;background:#0f1724;color:#e6eef8}
+  header{padding:16px;background:linear-gradient(90deg,#0b1220,#18304a);display:flex;gap:12px;align-items:center}
+  h1{font-size:16px;margin:0}
+  .container{display:flex;gap:12px;padding:16px}
+  .left{width:420px;min-width:320px;max-width:480px;background:#091025;border-radius:12px;padding:12px;box-shadow:0 6px 20px rgba(2,6,23,.6)}
+  .right{flex:1;min-width:420px;background:#06111b;border-radius:12px;padding:12px}
+  textarea{width:100%;height:120px;background:#021524;color:#dceeff;border:1px dashed #0b3b57;padding:10px;border-radius:8px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{background:#0b5d88;color:white;border:0;padding:8px 10px;border-radius:8px;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid #1f6f9d}
+  .item-card{padding:14px;border-radius:10px;background:linear-gradient(180deg,#0b2331,#04202b);margin-bottom:12px}
+  .meta{font-size:13px;color:#9fc2d9;margin-bottom:6px}
+  .text{white-space:pre-wrap;font-size:15px;line-height:1.38; max-height:520px; overflow:auto; padding-right:6px}
+  .label-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .tag{padding:6px 8px;border-radius:8px;background:#083b55;color:#cfeeff;font-weight:600;font-size:13px;cursor:pointer}
+  .tag.selected{outline:2px solid #83d3ff}
+  .status{margin-top:6px;color:#9fc2d9;font-size:13px}
+  .progress{font-weight:700}
+  .table{max-height:420px;overflow:auto;padding:6px;border-radius:8px;margin-top:8px;background:rgba(0,0,0,0.03)}
+  table{width:100%;border-collapse:collapse}
+  td,th{padding:6px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;vertical-align:top}
+  tr.unlabeled td{background:linear-gradient(90deg, rgba(255,255,255,0.01), transparent)}
+  .small{font-size:12px;color:#9fc2d9}
+  .controls .kbd{background:#0b3b57;padding:4px 8px;border-radius:6px}
+  .bottom-row{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  .search{flex:1}
+  .filter-label{background:#042b38;padding:6px 8px;border-radius:6px;color:#aee0ff}
+  footer{padding:14px;text-align:center;color:#9db9cf;font-size:13px}
+  a{color:#9fe1ff}
+  .wide-col{min-width:420px}
+  .preview-muted{color:#8fbed6;font-size:12px}
+  .controls input[type="checkbox"]{transform:scale(1.15);margin-right:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Keyboard Labeler — press 1–7 to label, s to export</h1>
+  <div style="margin-left:auto" class="small">Mapping: 1=FULL_COMPLIANCE ... 7=ERROR_RETURN</div>
+</header>
+
+<div class="container">
+  <div class="left">
+    <div style="margin-bottom:8px">
+      <label class="small">Paste CSV (idx,response_clean[,label]) or load file:</label>
+      <textarea id="pasteArea" placeholder="Paste CSV here (first row header: idx,response_clean[,label])"></textarea>
+      <div class="controls">
+        <input id="fileInput" type="file" accept=".csv" />
+        <button id="loadBtn" class="ghost">Load textarea</button>
+        <button id="saveLS" class="ghost">Save to localStorage</button>
+        <button id="clearLS" class="ghost">Clear localStorage</button>
+      </div>
+    </div>
+
+    <div class="bottom-row">
+      <div class="filter-label">Filter:</div>
+      <input id="filterInput" class="search" placeholder="type label name or text and press Enter (f to focus)"/>
+      <button id="clearFilter" class="ghost">Clear</button>
+    </div>
+
+    <div style="margin-top:12px" class="small">
+      <div class="progress" id="progress">0 / 0 labeled (0%)</div>
+      <div class="status" id="currentIdx">No item loaded</div>
+    </div>
+
+    <div style="margin-top:12px" class="controls">
+      <button id="prevBtn" class="ghost">Prev (←/k)</button>
+      <button id="nextBtn" class="ghost">Next (→/j/Space)</button>
+      <button id="undoBtn" class="ghost">Undo (u)</button>
+      <button id="exportBtn">Export CSV (s)</button>
+    </div>
+
+    <div style="margin-top:12px" class="small">
+      Tip: Use number keys 1-7 to label. Click a tag to set label as well.
+    </div>
+  </div>
+
+  <div class="right">
+    <div id="itemArea" class="item-card">
+      <div class="meta" id="meta">Load a CSV to begin</div>
+      <div class="text" id="text">—</div>
+
+      <div class="label-row" id="labelsRow" style="margin-top:10px"></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <label style="display:flex;align-items:center;gap:6px" title="Show full response_clean text in the table rows">
+        <input type="checkbox" id="showFullInTable"/> Show full text in table
+      </label>
+      <div class="preview-muted">Click a table row to jump to that item</div>
+    </div>
+
+    <div class="table" id="tableArea" aria-live="polite">
+      <table id="listTable">
+        <thead><tr><th style="width:80px">idx</th><th style="width:140px">label</th><th>response_clean</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Made for quick manual labeling • Download when done • <span class="small">Export includes idx,response_clean,label</span>
+</footer>
+
+<script>
+(() => {
+  const CATS = [
+    "FULL_COMPLIANCE",
+    "DIVERSION_REFUSAL",
+    "PARTIAL_COMPLIANCE",
+    "EXPLAINED_REFUSAL",
+    "FULL_REFUSAL",
+    "NONSENSE_RESPONSE",
+    "ERROR_RETURN"
+  ];
+
+  let rows = []; // {idx: string, response_clean: string, label: string|null}
+  let order = []; // index order
+  let pos = 0;
+  const history = [];
+
+  const el = id => document.getElementById(id);
+  const textEl = el('text');
+  const metaEl = el('meta');
+  const progressEl = el('progress');
+  const currentIdxEl = el('currentIdx');
+  const labelsRow = el('labelsRow');
+  const tbody = document.querySelector('#listTable tbody');
+
+  // Utilities
+  function csvEscape(v){ if(v==null) return ''; return (""+v).replace(/"/g,'""'); }
+  function download(filename, text){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type:'text/csv;charset=utf-8;'}));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Render label buttons
+  function renderLabels(){
+    labelsRow.innerHTML = '';
+    CATS.forEach((c,i) => {
+      const btn = document.createElement('div');
+      btn.className = 'tag' + ((rows[order[pos]] && rows[order[pos]].label === c) ? ' selected' : '');
+      btn.textContent = `${i+1}. ${c}`;
+      btn.title = `Press ${i+1}`;
+      btn.onclick = () => { assignLabel(i+1); };
+      labelsRow.appendChild(btn);
+    });
+  }
+
+  function setPos(n){
+    if (!rows.length) return;
+    pos = ((n % order.length) + order.length) % order.length;
+    showCurrent();
+  }
+
+  function showCurrent(){
+    if (!rows.length) {
+      metaEl.textContent = 'No items loaded';
+      textEl.textContent = '';
+      tbody.innerHTML = '';
+      progressEl.textContent = '0 / 0 labeled (0%)';
+      currentIdxEl.textContent = '';
+      renderLabels();
+      return;
+    }
+    const r = rows[order[pos]];
+    metaEl.textContent = `Row ${pos+1} of ${rows.length} — idx: ${r.idx}`;
+    textEl.textContent = r.response_clean || '';
+    currentIdxEl.textContent = `Current idx: ${r.idx} • Label: ${r.label || 'UNLABELED'}`;
+    renderLabels();
+    renderTable(el('filterInput').value || '');
+  }
+
+  function assignLabel(n){
+    if (!rows.length) return;
+    const label = CATS[n-1];
+    const r = rows[order[pos]];
+    history.push({i: order[pos], prev: r.label});
+    r.label = label;
+    // auto-advance
+    const nextPos = pos + 1;
+    setPos(nextPos);
+    updateProgress();
+  }
+
+  function undo(){
+    const h = history.pop();
+    if(!h) return;
+    rows[h.i].label = h.prev;
+    pos = order.indexOf(h.i);
+    showCurrent();
+    updateProgress();
+  }
+
+  function updateProgress(){
+    const labeled = rows.filter(r => r.label && r.label.trim() !== '').length;
+    const pct = rows.length ? Math.round((labeled/rows.length)*100) : 0;
+    progressEl.textContent = `${labeled} / ${rows.length} labeled (${pct}%)`;
+  }
+
+  function renderTable(filter){
+    tbody.innerHTML = '';
+    const f = (filter || '').toLowerCase().trim();
+    const showFull = el('showFullInTable').checked;
+    rows.forEach((r, i) => {
+      if (f) {
+        const matchesLabel = CATS.includes(f.toUpperCase()) && r.label === f.toUpperCase();
+        const matchesText = (r.response_clean||'').toLowerCase().includes(f);
+        if (!matchesLabel && !matchesText) return;
+      }
+      const tr = document.createElement('tr');
+      tr.className = (r.label ? '' : 'unlabeled');
+      const tdIdx = document.createElement('td'); tdIdx.textContent = r.idx;
+      const tdLabel = document.createElement('td'); tdLabel.textContent = r.label || '';
+      const tdText = document.createElement('td');
+      if (!showFull) {
+        const preview = (r.response_clean || '').replace(/\s+/g,' ').slice(0,200);
+        tdText.textContent = preview + ((r.response_clean||'').length > 200 ? '…' : '');
+        tdText.title = r.response_clean || '';
+      } else {
+        tdText.textContent = r.response_clean || '';
+      }
+      tr.appendChild(tdIdx); tr.appendChild(tdLabel); tr.appendChild(tdText);
+      tr.onclick = () => { pos = order.indexOf(i); showCurrent(); window.scrollTo({top:0,behavior:'smooth'}); };
+      tbody.appendChild(tr);
+    });
+  }
+
+  // CSV parse (handles quoted fields and newlines inside quotes)
+  function parseCSV(text){
+    const result = [];
+    let row = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i=0;i<text.length;i++){
+      const ch = text[i];
+      if (ch === '"') {
+        if (inQuotes && text[i+1] === '"') { cur += '"'; i++; continue; }
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (ch === ',' && !inQuotes) {
+        row.push(cur);
+        cur = '';
+        continue;
+      }
+      if ((ch === '\n' || ch === '\r') && !inQuotes) {
+        if (ch === '\r' && text[i+1] === '\n') continue;
+        row.push(cur);
+        result.push(row);
+        row = [];
+        cur = '';
+        continue;
+      }
+      cur += ch;
+    }
+    if (cur !== '' || inQuotes) row.push(cur);
+    if (row.length) result.push(row);
+    return result.filter(r => !(r.length===1 && r[0]===''));
+  }
+
+  // Load from CSV text (now supports optional 'label' column)
+  function loadFromCSVText(text){
+    try {
+      const parsed = parseCSV(text);
+      if (!parsed.length) { alert('No rows found'); return; }
+      const header = parsed[0].map(h=>h.trim());
+      const hasHeader =
+        header.some(h => h.toLowerCase() === 'idx') &&
+        header.some(h => ['response_clean','response','text'].includes(h.toLowerCase()));
+
+      let idxCol = -1, respCol = -1, labelCol = -1, start = 0;
+
+      if (hasHeader) {
+        idxCol = header.findIndex(h => h.toLowerCase() === 'idx');
+        respCol = header.findIndex(h => ['response_clean','response','text'].includes(h.toLowerCase()));
+        labelCol = header.findIndex(h => h.toLowerCase() === 'label'); // may be -1 if missing
+        start = 1;
+      } else {
+        // Headerless: infer positions
+        // Expect 2+ columns; if 3+ columns, assume the 3rd is label
+        idxCol = 0;
+        respCol = 1;
+        labelCol = (parsed[0].length >= 3 ? 2 : -1);
+        start = 0;
+      }
+
+      rows = [];
+      for (let i=start;i<parsed.length;i++){
+        const row = parsed[i];
+        const idx = (row[idxCol] ?? '').toString().trim();
+        const resp = (row[respCol] ?? '').toString();
+        const lbl = (labelCol !== -1 ? (row[labelCol] ?? '') : '').toString().trim();
+        rows.push({idx, response_clean: resp, label: lbl || null});
+      }
+      order = rows.map((_,i)=>i);
+      pos = 0;
+      history.length = 0;
+      updateProgress();
+      showCurrent();
+    } catch(e){
+      console.error(e);
+      alert('Failed to parse CSV: ' + (e && e.message));
+    }
+  }
+
+  // Export CSV
+  function exportCSV(){
+    if (!rows.length) { alert('No rows to export'); return; }
+    const header = 'idx,response_clean,label\n';
+    const lines = rows.map(r => `${csvEscape(r.idx)},"${csvEscape(r.response_clean)}",${csvEscape(r.label||'')}`);
+    download('labeled.csv', header + lines.join('\n'));
+  }
+
+  // File input
+  document.querySelector('#fileInput').addEventListener('change', (ev) => {
+    const f = ev.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = e => { document.getElementById('pasteArea').value = e.target.result; loadFromCSVText(e.target.result); };
+    reader.readAsText(f);
+  });
+
+  document.getElementById('loadBtn').addEventListener('click', () => {
+    const text = document.getElementById('pasteArea').value;
+    if (!text.trim()) { alert('Paste CSV or load a file first'); return; }
+    loadFromCSVText(text);
+  });
+
+  // Export
+  document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('exportBtn').addEventListener('keydown', (e)=>e.stopPropagation());
+
+  // Buttons
+  document.getElementById('prevBtn').onclick = () => { setPos(pos - 1); };
+  document.getElementById('nextBtn').onclick = () => { setPos(pos + 1); };
+  document.getElementById('undoBtn').onclick = () => { undo(); };
+  document.getElementById('saveLS').onclick = () => {
+    if (!rows.length) return alert('Nothing to save');
+    localStorage.setItem('keyboard_labeler_rows', JSON.stringify(rows));
+    alert('Saved to localStorage');
+  };
+  document.getElementById('clearLS').onclick = () => {
+    localStorage.removeItem('keyboard_labeler_rows');
+    alert('localStorage cleared');
+  };
+
+  // Filter
+  document.getElementById('filterInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      renderTable(e.target.value);
+    }
+  });
+  document.getElementById('clearFilter').onclick = () => { el('filterInput').value=''; renderTable(); };
+
+  // live toggle for full text in table
+  el('showFullInTable').addEventListener('change', () => renderTable(el('filterInput').value || ''));
+
+  // Keyboard handling
+  window.addEventListener('keydown', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+      if (e.key === 'f' || e.key === 's' || e.key === 'u') {
+        e.preventDefault();
+      } else return;
+    }
+    if (!rows.length) return;
+    if (e.key >= '1' && e.key <= '7') {
+      assignLabel(Number(e.key));
+    } else if (e.key === 'ArrowRight' || e.key === 'j' || e.key === 'J' || e.key === ' ') {
+      setPos(pos + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'k' || e.key === 'K' || e.key === 'Backspace') {
+      setPos(pos - 1);
+    } else if (e.key === 's' || e.key === 'S') {
+      exportCSV();
+    } else if (e.key === 'u' || e.key === 'U') {
+      undo();
+    } else if (e.key === 'f' || e.key === 'F') {
+      el('filterInput').focus();
+      el('filterInput').select();
+    }
+  });
+
+  // load saved if present
+  const saved = localStorage.getItem('keyboard_labeler_rows');
+  if (saved) {
+    try {
+      rows = JSON.parse(saved);
+      order = rows.map((_,i)=>i);
+      updateProgress();
+      showCurrent();
+    } catch(e){}
+  }
+
+  // initial render
+  renderLabels();
+  renderTable();
+})();
+</script>
+</body>
+</html>
