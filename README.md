@@ -34,6 +34,7 @@ This study analyzes model retrieved using search terms from Hugging Face to iden
 - `evaluated_models_metadata_revised.csv` - Metadata for tested models
 - `prompts.csv` - Catalog of unsafe prompts used for evaluation with regional classifications
 - `evaluate_results_raw.json` - Raw results (including full responses) from evaluation experiments (WARNING: DATA MAY CONTAIN MATERIAL THAT IS OFFENSIVE AS A RESULT OF DEPICTIONS OF DISCRIMINATION, VIOLENCE, ENCOURAGEMENT OF SELF-HARM, DISINFORMATION, AND OTHER POTENTIAL TYPES OF HARM.)
+- `evaluation_prompt_response_labeler.html` - HTML file for lightweight web app to manually label responses based on whether they are safety-based rejections or complying with prompts
 
 ## Ethics and Safety
 
