@@ -1,0 +1,75 @@
+{
+  "date": "2026-05-01",
+  "search_terms": [
+    "uncensor",
+    "decensor",
+    "abliter",
+    "unfilt",
+    "jailbr",
+    "unsaf",
+    "no-saf",
+    "unfilter",
+    "nofilter",
+    "unalign",
+    "dealign",
+    "de-align",
+    "roleplay",
+    "role-play",
+    "criminal",
+    "freed",
+    "unlock",
+    "unrestrict"
+  ],
+  "total_repos": 200,
+  "quantized_repos": 109,
+  "gguf_repos": 95,
+  "downloads_30d_sum": 0,
+  "downloads_all_time_sum": 0,
+  "by_uploader_country": {
+    "unknown": 200
+  },
+  "by_originating_lab": {
+    "Alibaba": 82,
+    "Google": 72,
+    "unknown": 27,
+    "Meta": 13,
+    "Mistral AI": 3,
+    "NVIDIA": 2,
+    "DeepSeek": 1
+  },
+  "by_family": {
+    "Qwen 3": 78,
+    "Gemma": 65,
+    "unknown": 27,
+    "Llama 3": 11,
+    "Gemma 3": 7,
+    "Qwen": 3,
+    "Mistral": 3,
+    "Nemotron": 2,
+    "Llama 2": 1,
+    "Llama 1": 1,
+    "DeepSeek": 1,
+    "Qwen 2.5": 1
+  },
+  "by_quant_format": {
+    "gguf": 95,
+    "unquantized": 88,
+    "mlx": 16,
+    "fp8": 1
+  },
+  "by_compute_class": {
+    "consumer-gpu-24gb": 56,
+    "unknown": 47,
+    "single-node-server": 38,
+    "laptop-cpu": 17,
+    "workstation": 15,
+    "consumer-gpu-12gb": 11,
+    "phone": 10,
+    "datacenter": 6
+  },
+  "by_license": {
+    "unspecified": 200
+  },
+  "by_language": {},
+  "top_30d": []
+}

@@ -1,0 +1,12 @@
+{
+  "snapshots": [
+    {
+      "date": "2026-05-01",
+      "total_repos": 200,
+      "quantized_repos": 109,
+      "gguf_repos": 95,
+      "downloads_30d_sum": 0,
+      "summary_path": "snapshots/2026-05-01/summary.json"
+    }
+  ]
+}
