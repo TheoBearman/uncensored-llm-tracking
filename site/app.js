@@ -2,7 +2,10 @@
 const fmt = new Intl.NumberFormat("en-US");
 
 async function fetchJSON(path) {
-  const r = await fetch(path);
+  // GitHub Pages caches assets with max-age=600. Without no-store, a deploy
+  // that lands while a user has the page open will keep serving the previous
+  // index.json / summary.json for up to 10 min. Force a revalidation.
+  const r = await fetch(path, { cache: "no-store" });
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
   return r.json();
 }
