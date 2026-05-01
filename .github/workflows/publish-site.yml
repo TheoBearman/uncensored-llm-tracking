@@ -30,18 +30,31 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Assemble site payload
+        shell: bash
         run: |
-          mkdir -p _site
+          set -euo pipefail
+          shopt -s nullglob
+
+          mkdir -p _site _site/snapshots
           cp -r site/* _site/
-          mkdir -p _site/snapshots
-          # Copy the index and per-day summary/deltas (NOT the parquet/raw — too big for Pages)
-          cp snapshots/index.json _site/snapshots/index.json 2>/dev/null || echo '{"snapshots":[]}' > _site/snapshots/index.json
-          for dir in snapshots/*/; do
-            d=$(basename "$dir")
-            mkdir -p "_site/snapshots/$d"
-            [ -f "$dir/summary.json" ] && cp "$dir/summary.json" "_site/snapshots/$d/"
-            [ -f "$dir/deltas.json" ] && cp "$dir/deltas.json" "_site/snapshots/$d/"
-          done
+
+          # Copy the index, or write an empty one if no snapshots exist yet.
+          if [ -f snapshots/index.json ]; then
+            cp snapshots/index.json _site/snapshots/index.json
+          else
+            echo '{"snapshots":[]}' > _site/snapshots/index.json
+          fi
+
+          # Copy per-day summary/deltas (NOT the parquet/raw — too big for Pages).
+          # nullglob makes the loop a no-op when snapshots/ is missing or empty.
+          if [ -d snapshots ]; then
+            for dir in snapshots/*/; do
+              d=$(basename "$dir")
+              mkdir -p "_site/snapshots/$d"
+              [ -f "$dir/summary.json" ] && cp "$dir/summary.json" "_site/snapshots/$d/" || true
+              [ -f "$dir/deltas.json" ] && cp "$dir/deltas.json" "_site/snapshots/$d/" || true
+            done
+          fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
