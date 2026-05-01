@@ -44,12 +44,14 @@ jobs:
       - name: Run snapshot
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONUNBUFFERED: "1"
         run: |
           args="--terms safety_terms.txt --out snapshots --date ${{ steps.date.outputs.date }}"
+          args="$args --per-term-cap 5000 --max-repos 20000"
           if [ -n "${{ inputs.limit }}" ]; then
             args="$args --limit ${{ inputs.limit }}"
           fi
-          python scripts/snapshot.py $args
+          python -u scripts/snapshot.py $args
 
       - name: Compute delta vs previous snapshot
         if: steps.prev.outputs.prev != ''

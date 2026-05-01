@@ -43,17 +43,37 @@ def _coerce(obj):
     return {"_repr": repr(obj)}
 
 
-def discover_repo_ids(api: HfApi, search_terms: list[str], rate_limit: float):
-    """Return {repo_id: set(search_terms)} for repos hit by any term."""
+def discover_repo_ids(api: HfApi, search_terms: list[str], rate_limit: float,
+                      per_term_cap: int | None = None, max_repos: int | None = None):
+    """Return {repo_id: set(search_terms)} for repos hit by any term.
+
+    per_term_cap: stop after this many results per term (broad terms like 'roleplay'
+                  match >50k repos otherwise).
+    max_repos:    early-exit once the unique-repo count crosses this threshold.
+    """
     hits: dict[str, set[str]] = defaultdict(set)
-    for term in search_terms:
+    for ti, term in enumerate(search_terms, 1):
+        before = len(hits)
+        n_term = 0
         try:
             for m in api.list_models(search=term):
                 rid = getattr(m, "modelId", None) or getattr(m, "id", None)
                 if rid:
                     hits[rid].add(term)
+                n_term += 1
+                if per_term_cap and n_term >= per_term_cap:
+                    print(f"[discover] {term!r}: capped at {per_term_cap}", flush=True)
+                    break
+                if n_term % 1000 == 0:
+                    print(f"[discover] {term!r}: {n_term} so far (unique total: {len(hits)})", flush=True)
         except Exception as e:
-            print(f"[discover] error on term '{term}': {e}", file=sys.stderr)
+            print(f"[discover] error on term '{term}': {e}", file=sys.stderr, flush=True)
+        added = len(hits) - before
+        print(f"[discover] {ti}/{len(search_terms)} {term!r}: {n_term} matches, +{added} new "
+              f"(unique total: {len(hits)})", flush=True)
+        if max_repos and len(hits) >= max_repos:
+            print(f"[discover] reached max_repos={max_repos}, stopping discovery", flush=True)
+            break
         time.sleep(rate_limit)
     return hits
 
@@ -196,6 +216,10 @@ def main():
     p.add_argument("--hf-token", default=os.environ.get("HF_TOKEN"))
     p.add_argument("--rate", type=float, default=0.05)
     p.add_argument("--limit", type=int, default=None, help="Cap on repos enriched (for dry runs)")
+    p.add_argument("--per-term-cap", type=int, default=5000,
+                   help="Max repos returned per search term (broad terms can return 50k+)")
+    p.add_argument("--max-repos", type=int, default=20000,
+                   help="Stop discovery once unique repos crosses this threshold")
     args = p.parse_args()
 
     date = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -206,10 +230,14 @@ def main():
 
     api = HfApi(token=args.hf_token) if args.hf_token else HfApi()
 
-    print(f"[snapshot] {date}: discovering repos for {len(search_terms)} terms")
+    print(f"[snapshot] {date}: discovering repos for {len(search_terms)} terms "
+          f"(per_term_cap={args.per_term_cap}, max_repos={args.max_repos})", flush=True)
     t0 = time.time()
-    hits = discover_repo_ids(api, search_terms, rate_limit=args.rate)
-    print(f"[snapshot] discovered {len(hits)} unique repos in {time.time() - t0:.1f}s")
+    hits = discover_repo_ids(
+        api, search_terms, rate_limit=args.rate,
+        per_term_cap=args.per_term_cap, max_repos=args.max_repos,
+    )
+    print(f"[snapshot] discovered {len(hits)} unique repos in {time.time() - t0:.1f}s", flush=True)
 
     repo_ids = list(hits.keys())
     if args.limit:
@@ -230,8 +258,12 @@ def main():
             row = {"repo_id": rid, "_enrich_error": str(e)[:200]}
         rows.append(row)
 
-        if i % 100 == 0:
-            print(f"[snapshot] enriched {i}/{len(repo_ids)}", flush=True)
+        if i % 25 == 0 or i == len(repo_ids):
+            elapsed = time.time() - t0
+            rate = i / elapsed if elapsed else 0
+            eta = (len(repo_ids) - i) / rate if rate else 0
+            print(f"[snapshot] enriched {i}/{len(repo_ids)} "
+                  f"({rate:.1f}/s, ETA {eta/60:.1f} min)", flush=True)
         time.sleep(args.rate)
 
     summary = build_summary(rows, date, search_terms)
