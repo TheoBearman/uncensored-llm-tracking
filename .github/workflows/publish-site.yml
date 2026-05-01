@@ -9,6 +9,12 @@ on:
       - "snapshots/**/summary.json"
       - "snapshots/**/deltas.json"
       - ".github/workflows/publish-site.yml"
+  # Snapshot commits are made by github-actions[bot] using GITHUB_TOKEN, which
+  # GitHub deliberately does NOT use to trigger downstream `push` workflows
+  # (anti-loop guard). Catch them via workflow_run instead.
+  workflow_run:
+    workflows: ["Weekly snapshot"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -23,11 +29,15 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # When triggered by workflow_run, only deploy if the upstream succeeded.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Assemble site payload
         shell: bash
