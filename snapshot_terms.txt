@@ -1,0 +1,38 @@
+# Curated search terms for the continuous tracking pipeline.
+#
+# This file is INTENTIONALLY DIFFERENT from safety_terms.txt — that file is the
+# paper's canonical term set, kept stable for reproducibility. This file is
+# the operational keyword set for ongoing weekly snapshots, optimized for
+# precision (low false-positive rate) over recall.
+#
+# Line format: <term>[:max_results]
+#   - Without a cap, the term runs uncapped (the global --max-repos still applies).
+#   - Inline caps suit broad terms where the long tail is mostly noise. Example:
+#       roleplay:1000
+#
+# Comment-out (don't delete) terms you remove, so the rationale stays visible.
+
+# Precise terms — uncapped.
+uncensor
+decensor
+abliter
+unfilt
+jailbr
+unsaf
+no-saf
+unfilter
+nofilter
+unalign
+dealign
+de-align
+
+# Removed from continuous tracking (low precision; matched tens of thousands of
+# repos, dominated by non-safety-relevant content):
+#   roleplay        (~50k matches; mostly RP character finetunes, not uncensored)
+#   role-play       (synonym of above)
+#   criminal        (matches crime-themed datasets, fiction models, etc.)
+#   freed           (overly generic English token)
+#   unlock          (matches "unlock"-as-feature in many unrelated repos)
+#   unrestrict      (mostly tokenizer / context-length unlocks, not safety)
+#
+# To re-introduce one with a noise budget, append e.g.:  roleplay:1000

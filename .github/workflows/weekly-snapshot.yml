@@ -46,8 +46,10 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PYTHONUNBUFFERED: "1"
         run: |
-          args="--terms safety_terms.txt --out snapshots --date ${{ steps.date.outputs.date }}"
-          args="$args --per-term-cap 5000 --max-repos 20000"
+          # Per-term caps live in snapshot_terms.txt (inline `term:cap` syntax),
+          # so no global --per-term-cap here. --max-repos is the ultimate ceiling.
+          args="--terms snapshot_terms.txt --out snapshots --date ${{ steps.date.outputs.date }}"
+          args="$args --max-repos 50000"
           if [ -n "${{ inputs.limit }}" ]; then
             args="$args --limit ${{ inputs.limit }}"
           fi

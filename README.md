@@ -59,12 +59,24 @@ Each Monday a GitHub Action writes `snapshots/YYYY-MM-DD/` containing:
 pip install -r requirements.txt
 export HF_TOKEN=hf_...
 
-# Take a snapshot for today (UTC). --limit caps repos for dry runs.
-python scripts/snapshot.py --terms safety_terms.txt --limit 200
+# Take a snapshot for today (UTC). Default terms file is snapshot_terms.txt.
+# --limit caps repos for dry runs.
+python scripts/snapshot.py --limit 200
 
 # Diff two snapshots
 python scripts/delta.py snapshots/2026-04-24 snapshots/2026-05-01
 ```
+
+### Term files
+
+Two distinct files, intentionally:
+
+- **`safety_terms.txt`** — paper-canonical, used by the original
+  `scrape_model_names.py` for reproducing the published results. Do not edit.
+- **`snapshot_terms.txt`** — operational keyword set for the continuous
+  pipeline. Tuned for **precision** (high false-positive terms like
+  `roleplay`, `criminal`, `unlock` are intentionally excluded). Per-term caps
+  via inline `term:cap` syntax for any term where the long tail is noise.
 
 ### Enrichment modules (`scripts/`)
 

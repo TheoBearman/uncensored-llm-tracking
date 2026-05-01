@@ -43,16 +43,47 @@ def _coerce(obj):
     return {"_repr": repr(obj)}
 
 
-def discover_repo_ids(api: HfApi, search_terms: list[str], rate_limit: float,
-                      per_term_cap: int | None = None, max_repos: int | None = None):
+def parse_terms_file(path: str) -> list[tuple[str, int | None]]:
+    """Parse a terms file. Each non-comment line is `term` or `term:cap`."""
+    out: list[tuple[str, int | None]] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if ":" in line:
+                term, cap_s = line.rsplit(":", 1)
+                term = term.strip()
+                try:
+                    cap: int | None = int(cap_s.strip())
+                except ValueError:
+                    # Treat 'no-saf' / 'de-align' style terms as uncapped — the colon
+                    # was actually part of the term, not a cap. Re-attach it.
+                    term, cap = line, None
+            else:
+                term, cap = line, None
+            if term:
+                out.append((term, cap))
+    return out
+
+
+def discover_repo_ids(
+    api: HfApi,
+    terms_with_caps: list[tuple[str, int | None]],
+    rate_limit: float,
+    default_per_term_cap: int | None = None,
+    max_repos: int | None = None,
+):
     """Return {repo_id: set(search_terms)} for repos hit by any term.
 
-    per_term_cap: stop after this many results per term (broad terms like 'roleplay'
-                  match >50k repos otherwise).
-    max_repos:    early-exit once the unique-repo count crosses this threshold.
+    terms_with_caps: list of (term, cap) — cap of None means "use default_per_term_cap"
+                     (which itself can be None for fully uncapped).
+    max_repos:       early-exit once the unique-repo count crosses this threshold.
     """
     hits: dict[str, set[str]] = defaultdict(set)
-    for ti, term in enumerate(search_terms, 1):
+    n = len(terms_with_caps)
+    for ti, (term, term_cap) in enumerate(terms_with_caps, 1):
+        cap = term_cap if term_cap is not None else default_per_term_cap
         before = len(hits)
         n_term = 0
         try:
@@ -61,16 +92,17 @@ def discover_repo_ids(api: HfApi, search_terms: list[str], rate_limit: float,
                 if rid:
                     hits[rid].add(term)
                 n_term += 1
-                if per_term_cap and n_term >= per_term_cap:
-                    print(f"[discover] {term!r}: capped at {per_term_cap}", flush=True)
+                if cap and n_term >= cap:
+                    print(f"[discover] {term!r}: capped at {cap}", flush=True)
                     break
                 if n_term % 1000 == 0:
                     print(f"[discover] {term!r}: {n_term} so far (unique total: {len(hits)})", flush=True)
         except Exception as e:
             print(f"[discover] error on term '{term}': {e}", file=sys.stderr, flush=True)
         added = len(hits) - before
-        print(f"[discover] {ti}/{len(search_terms)} {term!r}: {n_term} matches, +{added} new "
-              f"(unique total: {len(hits)})", flush=True)
+        cap_note = f" (cap={cap})" if cap else " (uncapped)"
+        print(f"[discover] {ti}/{n} {term!r}: {n_term} matches, +{added} new"
+              f"{cap_note} (unique total: {len(hits)})", flush=True)
         if max_repos and len(hits) >= max_repos:
             print(f"[discover] reached max_repos={max_repos}, stopping discovery", flush=True)
             break
@@ -210,32 +242,35 @@ def update_index(snapshots_root: Path):
 
 def main():
     p = argparse.ArgumentParser(description="Take a dated snapshot of HF safety-keyword models.")
-    p.add_argument("--terms", default="safety_terms.txt")
+    p.add_argument("--terms", default="snapshot_terms.txt",
+                   help="Curated terms file. Lines may be 'term' or 'term:cap'.")
     p.add_argument("--out", default="snapshots", help="Snapshots root directory")
     p.add_argument("--date", default=None, help="YYYY-MM-DD (defaults to UTC today)")
     p.add_argument("--hf-token", default=os.environ.get("HF_TOKEN"))
     p.add_argument("--rate", type=float, default=0.05)
     p.add_argument("--limit", type=int, default=None, help="Cap on repos enriched (for dry runs)")
-    p.add_argument("--per-term-cap", type=int, default=5000,
-                   help="Max repos returned per search term (broad terms can return 50k+)")
-    p.add_argument("--max-repos", type=int, default=20000,
-                   help="Stop discovery once unique repos crosses this threshold")
+    p.add_argument("--per-term-cap", type=int, default=None,
+                   help="Default cap for terms without an inline cap (None = uncapped)")
+    p.add_argument("--max-repos", type=int, default=50000,
+                   help="Global ceiling — stop discovery once unique repos crosses this")
     args = p.parse_args()
 
     date = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     out_dir = Path(args.out) / date
 
-    with open(args.terms, "r", encoding="utf-8") as f:
-        search_terms = [t.strip() for t in f if t.strip() and not t.strip().startswith("#")]
+    terms_with_caps = parse_terms_file(args.terms)
+    search_terms = [t for t, _ in terms_with_caps]
 
     api = HfApi(token=args.hf_token) if args.hf_token else HfApi()
 
-    print(f"[snapshot] {date}: discovering repos for {len(search_terms)} terms "
-          f"(per_term_cap={args.per_term_cap}, max_repos={args.max_repos})", flush=True)
+    capped = [(t, c) for t, c in terms_with_caps if c is not None]
+    print(f"[snapshot] {date}: discovering for {len(terms_with_caps)} terms "
+          f"({len(capped)} with inline caps, default_cap={args.per_term_cap}, "
+          f"max_repos={args.max_repos})", flush=True)
     t0 = time.time()
     hits = discover_repo_ids(
-        api, search_terms, rate_limit=args.rate,
-        per_term_cap=args.per_term_cap, max_repos=args.max_repos,
+        api, terms_with_caps, rate_limit=args.rate,
+        default_per_term_cap=args.per_term_cap, max_repos=args.max_repos,
     )
     print(f"[snapshot] discovered {len(hits)} unique repos in {time.time() - t0:.1f}s", flush=True)
 
