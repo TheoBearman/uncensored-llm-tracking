@@ -1,0 +1,79 @@
+name: Weekly snapshot
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Optional cap on repos enriched (for dry runs)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Determine snapshot date
+        id: date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Find previous snapshot for delta
+        id: prev
+        run: |
+          prev=$(ls -1d snapshots/*/ 2>/dev/null | sort | tail -n 1 | sed 's:/$::' || true)
+          echo "prev=$prev" >> "$GITHUB_OUTPUT"
+
+      - name: Run snapshot
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          args="--terms safety_terms.txt --out snapshots --date ${{ steps.date.outputs.date }}"
+          if [ -n "${{ inputs.limit }}" ]; then
+            args="$args --limit ${{ inputs.limit }}"
+          fi
+          python scripts/snapshot.py $args
+
+      - name: Compute delta vs previous snapshot
+        if: steps.prev.outputs.prev != ''
+        run: |
+          new_dir="snapshots/${{ steps.date.outputs.date }}"
+          if [ "${{ steps.prev.outputs.prev }}" != "$new_dir" ]; then
+            python scripts/delta.py "${{ steps.prev.outputs.prev }}" "$new_dir"
+          fi
+
+      - name: Commit snapshot artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snapshots/${{ steps.date.outputs.date }} snapshots/index.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "snapshot: ${{ steps.date.outputs.date }}"
+            git push
+          fi
+
+      - name: Upload snapshot as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-${{ steps.date.outputs.date }}
+          path: snapshots/${{ steps.date.outputs.date }}
+          retention-days: 90

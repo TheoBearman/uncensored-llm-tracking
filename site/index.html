@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Uncensored LLM Tracker</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Uncensored LLM Tracker</h1>
+    <p class="sub">
+      Weekly snapshots of safety-keyword-matching open-weight models on Hugging Face.
+      Companion to <em>Uncensored AI in the Wild</em>.
+    </p>
+    <p class="meta" id="latest-meta">Loading latest snapshot…</p>
+  </header>
+
+  <section id="headline">
+    <div class="card"><div class="num" id="kpi-total">—</div><div class="label">repos tracked</div></div>
+    <div class="card"><div class="num" id="kpi-quant">—</div><div class="label">quantized</div></div>
+    <div class="card"><div class="num" id="kpi-gguf">—</div><div class="label">GGUF builds</div></div>
+    <div class="card"><div class="num" id="kpi-dl">—</div><div class="label">30-day downloads</div></div>
+  </section>
+
+  <section>
+    <h2>Growth over time</h2>
+    <div class="chart" id="chart-growth"></div>
+    <p class="caption">Total tracked repos and GGUF derivatives at each weekly snapshot.</p>
+  </section>
+
+  <section class="grid-2">
+    <div>
+      <h2>Originating lab</h2>
+      <div class="chart" id="chart-lab"></div>
+      <p class="caption">Where derivatives trace upstream — relevant to upstream-developer obligations under the EU AI Act.</p>
+    </div>
+    <div>
+      <h2>Uploader country</h2>
+      <div class="chart" id="chart-country"></div>
+      <p class="caption">Best-effort attribution from a curated org-namespace map. Unknowns are reported transparently.</p>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div>
+      <h2>Compute class</h2>
+      <div class="chart" id="chart-compute"></div>
+      <p class="caption">Hardware ceiling at the listed quantization. "phone" / "laptop-cpu" / "consumer-gpu-*" buckets.</p>
+    </div>
+    <div>
+      <h2>Quantization format</h2>
+      <div class="chart" id="chart-quant"></div>
+      <p class="caption">GGUF / GPTQ / AWQ / MLX share — the "local-deployable" surface.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Top movers (latest week)</h2>
+    <p class="caption" id="movers-meta"></p>
+    <table id="movers"><thead><tr>
+      <th>repo</th><th>family</th><th>lab</th><th>quant</th><th>30d delta</th>
+    </tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>Takedowns &amp; license flips</h2>
+    <p class="caption" id="events-meta"></p>
+    <div class="grid-2">
+      <div>
+        <h3>Removed since last snapshot</h3>
+        <ul id="removed"></ul>
+      </div>
+      <div>
+        <h3>License changes</h3>
+        <ul id="license-flips"></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Source: <a href="https://github.com/" id="repo-link">repository</a>.
+      Snapshots are taken weekly by GitHub Actions; data is best-effort and may
+      under-count community uploads not matching the curated keyword set.
+    </p>
+  </footer>
+</body>
+</html>

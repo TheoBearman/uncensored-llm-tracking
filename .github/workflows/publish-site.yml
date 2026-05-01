@@ -1,0 +1,52 @@
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "snapshots/index.json"
+      - "snapshots/**/summary.json"
+      - "snapshots/**/deltas.json"
+      - ".github/workflows/publish-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site payload
+        run: |
+          mkdir -p _site
+          cp -r site/* _site/
+          mkdir -p _site/snapshots
+          # Copy the index and per-day summary/deltas (NOT the parquet/raw — too big for Pages)
+          cp snapshots/index.json _site/snapshots/index.json 2>/dev/null || echo '{"snapshots":[]}' > _site/snapshots/index.json
+          for dir in snapshots/*/; do
+            d=$(basename "$dir")
+            mkdir -p "_site/snapshots/$d"
+            [ -f "$dir/summary.json" ] && cp "$dir/summary.json" "_site/snapshots/$d/"
+            [ -f "$dir/deltas.json" ] && cp "$dir/deltas.json" "_site/snapshots/$d/"
+          done
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
