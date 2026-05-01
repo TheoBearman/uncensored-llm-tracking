@@ -110,7 +110,10 @@ def discover_repo_ids(
     return hits
 
 
-def fetch_with_retry(api: HfApi, repo_id: str, max_retries: int = 5):
+def fetch_with_retry(api: HfApi, repo_id: str, max_retries: int = 5,
+                     per_call_timeout: float = 30.0):
+    """Fetch model_info with retry. per_call_timeout caps any single HTTP attempt
+    so a stalled connection can't consume the whole job's runtime budget."""
     attempt = 0
     while True:
         try:
@@ -122,6 +125,7 @@ def fetch_with_retry(api: HfApi, repo_id: str, max_retries: int = 5):
                     "gated", "private", "license", "createdAt", "lastModified",
                     "author",
                 ],
+                timeout=per_call_timeout,
             )
         except HfHubHTTPError as e:
             attempt += 1

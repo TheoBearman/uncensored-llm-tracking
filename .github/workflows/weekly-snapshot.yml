@@ -42,6 +42,9 @@ jobs:
           echo "prev=$prev" >> "$GITHUB_OUTPUT"
 
       - name: Run snapshot
+        # Cap the snapshot step independently so a stalled HF call can't burn
+        # the whole 5.5h job budget. Current expected runtime is ~10–15 min.
+        timeout-minutes: 60
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PYTHONUNBUFFERED: "1"
